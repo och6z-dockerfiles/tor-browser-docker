@@ -1,0 +1,53 @@
+ARG IMAGE_VERSION
+
+FROM debian:${IMAGE_VERSION}
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    wget \
+    ca-certificates \
+    xz-utils \
+    libgtk-3-0 \
+    libdbus-glib-1-2 \
+    libx11-xcb1 \
+    libxt6 \
+    && apt-get purge -y && apt-get autoremove -y && apt-get autoclean -y \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG GID
+ARG GID_NAME
+ARG UID
+ARG UID_NAME
+
+RUN addgroup --gid ${GID} ${UID_NAME} \
+    && adduser --uid ${UID} \
+    --ingroup ${GID_NAME} \
+    --home /home/${UID_NAME} \
+    --shell /bin/bash \
+    --disabled-password \
+    --gecos "" ${UID_NAME}
+
+ARG TOR_VERSION
+
+RUN wget https://dist.torproject.org/torbrowser/${TOR_VERSION}/tor-browser-linux64-${TOR_VERSION}_en-US.tar.xz \
+    && mkdir --parents /home/${UID_NAME}/tor-browser \
+    && tar -vxJ \
+    --strip-components 1 \
+    --directory=/home/${UID_NAME}/tor-browser \
+    --file=tor-browser-linux64-${TOR_VERSION}_en-US.tar.xz \
+    && rm -rf tor-browser-linux64-${TOR_VERSION}_en-US.tar.xz \
+    && chown --recursive ${UID_NAME}:${GID_NAME} /home/${UID_NAME}/tor-browser
+
+USER ${UID_NAME}
+
+WORKDIR /home/${UID_NAME}
+
+ENTRYPOINT ["/bin/bash", "-c"]
+
+CMD ["tor-browser/Browser/start-tor-browser"]
+
+#docker builder build --no-cache --build-arg IMAGE_VERSION=unstable-slim --build-arg GID=$(id -g) --build-arg GID_NAME=$(id -gn) --build-arg UID=$(id -u) --build-arg UID_NAME=$(id -un) --build-arg TOR_VERSION=10.0.1 --file Dockerfile.debian --tag image-name:version .
+#xhost +local:docker
+#docker container run --interactive --tty --volume /tmp/.X11-unix:/tmp/.X11-unix --volume /dev/shm:/dev/shm --volume /etc/machine-id:/etc/machine-id:ro --env DISPLAY=unix$DISPLAY --name container-name image-name:version
