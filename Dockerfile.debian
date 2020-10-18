@@ -13,6 +13,7 @@ RUN apt-get update \
     libdbus-glib-1-2 \
     libx11-xcb1 \
     libxt6 \
+    libpulse0 \
     && apt-get purge -y && apt-get autoremove -y && apt-get autoclean -y \
     && rm -rf /var/lib/apt/lists/*
 
@@ -21,13 +22,15 @@ ARG GID_NAME
 ARG UID
 ARG UID_NAME
 
-RUN addgroup --gid ${GID} ${UID_NAME} \
-    && adduser --uid ${UID} \
-    --ingroup ${GID_NAME} \
-    --home /home/${UID_NAME} \
+RUN groupadd --gid ${GID} ${UID_NAME} \
+    && useradd --uid ${UID} \
+    --no-user-group \
+    --gid ${GID} \
+    --groups audio,video \
+    --home-dir /home/${UID_NAME} \
+    --create-home \
     --shell /bin/bash \
-    --disabled-password \
-    --gecos "" ${UID_NAME}
+    ${UID_NAME}
 
 ARG TOR_VERSION
 
@@ -50,4 +53,4 @@ CMD ["tor-browser/Browser/start-tor-browser"]
 
 #docker builder build --no-cache --build-arg IMAGE_VERSION=unstable-slim --build-arg GID=$(id -g) --build-arg GID_NAME=$(id -gn) --build-arg UID=$(id -u) --build-arg UID_NAME=$(id -un) --build-arg TOR_VERSION=10.0.1 --file Dockerfile.debian --tag image-name:version .
 #xhost +local:docker
-#docker container run --interactive --tty --volume /tmp/.X11-unix:/tmp/.X11-unix --volume /dev/shm:/dev/shm --volume /etc/machine-id:/etc/machine-id:ro --env DISPLAY=unix$DISPLAY --name container-name image-name:version
+#docker container run --interactive --tty --device /dev/snd --device /dev/dri --volume /tmp/.X11-unix:/tmp/.X11-unix --volume /dev/shm:/dev/shm --env DISPLAY=unix$DISPLAY --name container-name image-name:version
